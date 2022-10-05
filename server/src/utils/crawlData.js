@@ -5,7 +5,7 @@ const moment = require("moment");
 
 const crawlName = async (studentID) => {
   let name = "";
-  await rp(process.env.URL + studentID, async (error, res, html) => {
+  await rp(process.env.URL_DATA + studentID, async (error, res, html) => {
     if (!error && res.statusCode == 200) {
       const $ = cheerio.load(html);
       name = $("#ctl00_ContentPlaceHolder1_ctl00_lblContentTenSV").text();
@@ -20,7 +20,7 @@ const crawlName = async (studentID) => {
 const crawlData = async (studentID) => {
   const newArray = [];
   let storeDivinedNumber = 8;
-  await rp(process.env.URL + studentID, (error, res, html) => {
+  await rp(process.env.URL_DATA + studentID, (error, res, html) => {
     if (!error && res.statusCode == 200) {
       const $ = cheerio.load(html);
 
