@@ -1,4 +1,5 @@
 const moment = require("moment");
+const puppeteer = require("puppeteer");
 const {
   MONDAY,
   TUESDAY,
@@ -9,7 +10,7 @@ const {
   FRIDAY,
 } = require("../constants/dayOfWeek");
 const { convertDateToValue } = require("../utils/convertDateToValue");
-const { crawlData, crawlName } = require("../utils/crawlData");
+const { crawlData, crawlName, crawlData2 } = require("../utils/crawlData");
 
 class CrawlDataController {
   getData = async (req, res) => {
@@ -126,7 +127,7 @@ class CrawlDataController {
             if (
               moment(moment(dateValue).format("YYYY-MM-DD")).isBetween(
                 moment(scheduleValue.week.date.dateStart).format("YYYY-MM-DD"),
-                moment(scheduleValue.week.date.dateEnd).format("YYYY-MM-DD"),
+                moment(scheduleValue.week.date.dateEnd).format("YYYY-MM-DD")
               ) &&
               convertDateToValue(scheduleValue.dow) ===
                 moment(dateValue).weekday()
@@ -162,7 +163,7 @@ class CrawlDataController {
         for (const key of value.scheduleArray) {
           if (Object.keys(key).length !== 0) {
             const dateStart = moment(key.week.date.dateStart).format(
-              "YYYY-MM-DD",
+              "YYYY-MM-DD"
             );
             const dateEnd = moment(key.week.date.dateEnd).format("YYYY-MM-DD");
             const dayOfWeek = key.dow;
@@ -189,6 +190,154 @@ class CrawlDataController {
       });
 
     return res.status(200).send({ timetable: result });
+  };
+
+  test = async (req, res) => {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(
+      "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
+    );
+
+    await page.type(
+      "#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa",
+      "3119560029"
+    );
+
+    await page.type(
+      "#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau",
+      "pdk25251225"
+    );
+    //
+
+    const submitButtonSelector = "#ctl00_ContentPlaceHolder1_ctl00_btnDangNhap";
+    await page.waitForSelector(submitButtonSelector);
+    await page.click(submitButtonSelector);
+
+    const allResultsSelector = "#ctl00_menu_thoikhoabieu .center a";
+    await page.waitForSelector(allResultsSelector);
+    await page.click(allResultsSelector);
+
+    const content = await page.content();
+    const crawlArray = await crawlData2(content);
+    const date = moment().add(3, "months");
+    const weekOfDay = moment().weekday();
+    let newArrayDate = [];
+    let resultArray = [];
+
+    switch (weekOfDay) {
+      case MONDAY.value:
+        newArrayDate = [
+          moment(date).subtract(1, "day"),
+          moment(date),
+          moment(date).add(1, "day"),
+          moment(date).add(2, "day"),
+          moment(date).add(3, "day"),
+          moment(date).add(4, "day"),
+          moment(date).add(5, "day"),
+        ];
+        break;
+      case TUESDAY.value:
+        newArrayDate = [
+          moment(date).subtract(2, "day"),
+          moment(date).subtract(1, "day"),
+          moment(date),
+          moment(date).add(1, "day"),
+          moment(date).add(2, "day"),
+          moment(date).add(3, "day"),
+          moment(date).add(4, "day"),
+        ];
+        break;
+      case WEDNESDAY.value:
+        newArrayDate = [
+          moment(date).subtract(3, "day"),
+          moment(date).subtract(2, "day"),
+          moment(date).subtract(1, "day"),
+          moment(date),
+          moment(date).add(1, "day"),
+          moment(date).add(2, "day"),
+          moment(date).add(3, "day"),
+        ];
+        break;
+
+      case THURSDAY.value:
+        newArrayDate = [
+          moment(date).subtract(4, "day"),
+          moment(date).subtract(3, "day"),
+          moment(date).subtract(2, "day"),
+          moment(date).subtract(1, "day"),
+          moment(date),
+          moment(date).add(1, "day"),
+          moment(date).add(2, "day"),
+        ];
+        break;
+      case FRIDAY.value:
+        newArrayDate = [
+          moment(date).subtract(5, "day"),
+          moment(date).subtract(4, "day"),
+          moment(date).subtract(3, "day"),
+          moment(date).subtract(2, "day"),
+          moment(date).subtract(1, "day"),
+          moment(date),
+          moment(date).add(1, "day"),
+        ];
+        break;
+
+      case SATURDAY.value:
+        newArrayDate = [
+          moment(date).subtract(6, "day"),
+          moment(date).subtract(5, "day"),
+          moment(date).subtract(4, "day"),
+          moment(date).subtract(3, "day"),
+          moment(date).subtract(2, "day"),
+          moment(date).subtract(1, "day"),
+          moment(date),
+        ];
+        break;
+
+      case SUNDAY.value:
+        newArrayDate = [
+          moment(date),
+          moment(date).add(1, "day"),
+          moment(date).add(2, "day"),
+          moment(date).add(3, "day"),
+          moment(date).add(4, "day"),
+          moment(date).add(5, "day"),
+          moment(date).add(6, "day"),
+        ];
+      default:
+        break;
+    }
+
+    crawlArray.forEach((value, index) => {
+      const temp = { ...value, scheduleArray: [] };
+      const tempSchedule = value.scheduleArray;
+
+      tempSchedule.forEach((scheduleValue, scheduleIndex) => {
+        if (Object.keys(scheduleValue).length !== 0) {
+          newArrayDate.forEach((dateValue, dateIndexValue) => {
+            if (
+              moment(moment(dateValue).format("YYYY-MM-DD")).isBetween(
+                moment(scheduleValue.week.date.dateStart).format("YYYY-MM-DD"),
+                moment(scheduleValue.week.date.dateEnd).format("YYYY-MM-DD")
+              ) &&
+              convertDateToValue(scheduleValue.dow) ===
+                moment(dateValue).weekday()
+            ) {
+              temp.scheduleArray.push(scheduleValue);
+            }
+          });
+        }
+      });
+
+      if (temp.scheduleArray.length !== 0) {
+        resultArray.push(temp);
+      }
+    });
+
+    await browser.close();
+
+    return res.status(200).send({ timetable: resultArray });
   };
 }
 
