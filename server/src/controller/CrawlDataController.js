@@ -12,14 +12,14 @@ class CrawlDataController {
   };
 
   getName = async (req, res) => {
-    const { studentId, password } = req.body;
+    const { studentID, password } = req.body;
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(
       "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
     );
 
-    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentId);
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
 
     await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
     //
@@ -40,14 +40,17 @@ class CrawlDataController {
 
   //! need to handle QP3 subject
   postDataByDay = async (req, res) => {
-    const { studentId, password } = req.body;
+    const { studentID, password, date } = req.body;
+    if (!date) {
+      return res.status(200).send({ message: "vui lòng nhập ngày tháng năm" });
+    }
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(
       "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
     );
 
-    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentId);
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
 
     await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
     //
@@ -63,7 +66,6 @@ class CrawlDataController {
     const content = await page.content();
 
     const getCrawlData = await crawlData(content);
-    const { date } = req.body;
 
     const formatDate = moment(date).format("YYYY-MM-DD");
 
@@ -103,14 +105,17 @@ class CrawlDataController {
   };
 
   postDataByWeek = async (req, res) => {
-    const { studentId, password } = req.body;
+    const { studentID, password, date } = req.body;
+    if (!date) {
+      return res.status(400).send({ message: "Vui long nhập ngày tháng năm" });
+    }
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(
       "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
     );
 
-    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentId);
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
 
     await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
     //
@@ -125,9 +130,12 @@ class CrawlDataController {
 
     const content = await page.content();
     const crawlArray = await crawlData(content);
-    const date = moment().add(4, "months");
-    const weekOfDay = moment().weekday();
+    console.log(crawlArray);
+    const dateReq = moment(date);
+    const weekOfDay = moment(date).weekday();
     let newArrayDate = returnWeek(weekOfDay, date);
+
+    console.log(newArrayDate);
     let resultArray = [];
 
     crawlArray.forEach((value, index) => {
