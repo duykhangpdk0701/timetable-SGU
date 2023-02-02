@@ -15,9 +15,7 @@ class CrawlDataController {
     const { studentID, password } = req.body;
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
-    await page.goto(
-      "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
-    );
+    await page.goto(process.env.URL_CRAWL);
 
     await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
 
@@ -46,9 +44,7 @@ class CrawlDataController {
     }
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-    await page.goto(
-      "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
-    );
+    await page.goto(process.env.URL_CRAWL);
 
     await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
 
@@ -111,9 +107,7 @@ class CrawlDataController {
     }
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-    await page.goto(
-      "http://thongtindaotao.sgu.edu.vn/default.aspx?page=dangnhap"
-    );
+    await page.goto(process.env.URL_CRAWL);
 
     await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
 
