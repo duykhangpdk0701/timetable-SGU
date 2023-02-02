@@ -1,15 +1,8 @@
 const moment = require("moment");
-const {
-  MONDAY,
-  TUESDAY,
-  WEDNESDAY,
-  SATURDAY,
-  SUNDAY,
-  THURSDAY,
-  FRIDAY,
-} = require("../constants/dayOfWeek");
+const puppeteer = require("puppeteer");
 const { convertDateToValue } = require("../utils/convertDateToValue");
 const { crawlData, crawlName } = require("../utils/crawlData");
+const returnWeek = require("../utils/returnWeek");
 
 class CrawlDataController {
   getData = async (req, res) => {
@@ -19,140 +12,56 @@ class CrawlDataController {
   };
 
   getName = async (req, res) => {
-    const { id } = req.params;
-    const name = await crawlName(id);
+    const { studentID, password } = req.body;
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto(process.env.URL_CRAWL);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
+    //
+
+    const submitButtonSelector = "#ctl00_ContentPlaceHolder1_ctl00_btnDangNhap";
+    await page.waitForSelector(submitButtonSelector);
+    await page.click(submitButtonSelector);
+
+    const allResultsSelector = "#ctl00_menu_xemdiemthi .center a";
+    await page.waitForSelector(allResultsSelector);
+    await page.click(allResultsSelector);
+
+    const content = await page.content();
+    const name = await crawlName(content);
+    await browser.close();
     return res.status(200).send({ name });
-  };
-
-  postDataByWeek = async (req, res) => {
-    const { date } = req.body;
-    const { id } = req.params;
-    const crawlArray = await crawlData(id);
-    const weekOfDay = moment(date).weekday();
-    let newArrayDate = [];
-    let resultArray = [];
-
-    switch (weekOfDay) {
-      case MONDAY.value:
-        newArrayDate = [
-          moment(date).subtract(1, "day"),
-          moment(date),
-          moment(date).add(1, "day"),
-          moment(date).add(2, "day"),
-          moment(date).add(3, "day"),
-          moment(date).add(4, "day"),
-          moment(date).add(5, "day"),
-        ];
-        break;
-      case TUESDAY.value:
-        newArrayDate = [
-          moment(date).subtract(2, "day"),
-          moment(date).subtract(1, "day"),
-          moment(date),
-          moment(date).add(1, "day"),
-          moment(date).add(2, "day"),
-          moment(date).add(3, "day"),
-          moment(date).add(4, "day"),
-        ];
-        break;
-      case WEDNESDAY.value:
-        newArrayDate = [
-          moment(date).subtract(3, "day"),
-          moment(date).subtract(2, "day"),
-          moment(date).subtract(1, "day"),
-          moment(date),
-          moment(date).add(1, "day"),
-          moment(date).add(2, "day"),
-          moment(date).add(3, "day"),
-        ];
-        break;
-
-      case THURSDAY.value:
-        newArrayDate = [
-          moment(date).subtract(4, "day"),
-          moment(date).subtract(3, "day"),
-          moment(date).subtract(2, "day"),
-          moment(date).subtract(1, "day"),
-          moment(date),
-          moment(date).add(1, "day"),
-          moment(date).add(2, "day"),
-        ];
-        break;
-      case FRIDAY.value:
-        newArrayDate = [
-          moment(date).subtract(5, "day"),
-          moment(date).subtract(4, "day"),
-          moment(date).subtract(3, "day"),
-          moment(date).subtract(2, "day"),
-          moment(date).subtract(1, "day"),
-          moment(date),
-          moment(date).add(1, "day"),
-        ];
-        break;
-
-      case SATURDAY.value:
-        newArrayDate = [
-          moment(date).subtract(6, "day"),
-          moment(date).subtract(5, "day"),
-          moment(date).subtract(4, "day"),
-          moment(date).subtract(3, "day"),
-          moment(date).subtract(2, "day"),
-          moment(date).subtract(1, "day"),
-          moment(date),
-        ];
-        break;
-
-      case SUNDAY.value:
-        newArrayDate = [
-          moment(date),
-          moment(date).add(1, "day"),
-          moment(date).add(2, "day"),
-          moment(date).add(3, "day"),
-          moment(date).add(4, "day"),
-          moment(date).add(5, "day"),
-          moment(date).add(6, "day"),
-        ];
-      default:
-        break;
-    }
-
-    crawlArray.forEach((value, index) => {
-      const temp = { ...value, scheduleArray: [] };
-      const tempSchedule = value.scheduleArray;
-
-      tempSchedule.forEach((scheduleValue, scheduleIndex) => {
-        if (Object.keys(scheduleValue).length !== 0) {
-          newArrayDate.forEach((dateValue, dateIndexValue) => {
-            if (
-              moment(moment(dateValue).format("YYYY-MM-DD")).isBetween(
-                moment(scheduleValue.week.date.dateStart).format("YYYY-MM-DD"),
-                moment(scheduleValue.week.date.dateEnd).format("YYYY-MM-DD"),
-              ) &&
-              convertDateToValue(scheduleValue.dow) ===
-                moment(dateValue).weekday()
-            ) {
-              temp.scheduleArray.push(scheduleValue);
-            }
-          });
-        }
-      });
-
-      if (temp.scheduleArray.length !== 0) {
-        resultArray.push(temp);
-      }
-    });
-
-    return res.status(200).send({ timetable: resultArray });
   };
 
   //! need to handle QP3 subject
   postDataByDay = async (req, res) => {
-    const { id } = req.params;
-    const getCrawlData = await crawlData(id);
-    const { date } = req.body;
+    const { studentID, password, date } = req.body;
     if (!date) {
-      return res.status(400).send({ error: "Missing params date" });
+      return res.status(200).send({ message: "vui lòng nhập ngày tháng năm" });
     }
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(process.env.URL_CRAWL);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
+    //
+
+    const submitButtonSelector = "#ctl00_ContentPlaceHolder1_ctl00_btnDangNhap";
+    await page.waitForSelector(submitButtonSelector);
+    await page.click(submitButtonSelector);
+
+    const allResultsSelector = "#ctl00_menu_thoikhoabieu .center a";
+    await page.waitForSelector(allResultsSelector);
+    await page.click(allResultsSelector);
+
+    const content = await page.content();
+
+    const getCrawlData = await crawlData(content);
 
     const formatDate = moment(date).format("YYYY-MM-DD");
 
@@ -162,7 +71,7 @@ class CrawlDataController {
         for (const key of value.scheduleArray) {
           if (Object.keys(key).length !== 0) {
             const dateStart = moment(key.week.date.dateStart).format(
-              "YYYY-MM-DD",
+              "YYYY-MM-DD"
             );
             const dateEnd = moment(key.week.date.dateEnd).format("YYYY-MM-DD");
             const dayOfWeek = key.dow;
@@ -187,8 +96,71 @@ class CrawlDataController {
         }
         return { ...value, scheduleArray };
       });
-
+    await browser.close();
     return res.status(200).send({ timetable: result });
+  };
+
+  postDataByWeek = async (req, res) => {
+    const { studentID, password, date } = req.body;
+    if (!date) {
+      return res.status(400).send({ message: "Vui long nhập ngày tháng năm" });
+    }
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(process.env.URL_CRAWL);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
+    //
+
+    const submitButtonSelector = "#ctl00_ContentPlaceHolder1_ctl00_btnDangNhap";
+    await page.waitForSelector(submitButtonSelector);
+    await page.click(submitButtonSelector);
+
+    const allResultsSelector = "#ctl00_menu_thoikhoabieu .center a";
+    await page.waitForSelector(allResultsSelector);
+    await page.click(allResultsSelector);
+
+    const content = await page.content();
+    const crawlArray = await crawlData(content);
+    console.log(crawlArray);
+    const dateReq = moment(date);
+    const weekOfDay = moment(date).weekday();
+    let newArrayDate = returnWeek(weekOfDay, date);
+
+    console.log(newArrayDate);
+    let resultArray = [];
+
+    crawlArray.forEach((value, index) => {
+      const temp = { ...value, scheduleArray: [] };
+      const tempSchedule = value.scheduleArray;
+
+      tempSchedule.forEach((scheduleValue, scheduleIndex) => {
+        if (Object.keys(scheduleValue).length !== 0) {
+          newArrayDate.forEach((dateValue, dateIndexValue) => {
+            if (
+              moment(moment(dateValue).format("YYYY-MM-DD")).isBetween(
+                moment(scheduleValue.week.date.dateStart).format("YYYY-MM-DD"),
+                moment(scheduleValue.week.date.dateEnd).format("YYYY-MM-DD")
+              ) &&
+              convertDateToValue(scheduleValue.dow) ===
+                moment(dateValue).weekday()
+            ) {
+              temp.scheduleArray.push(scheduleValue);
+            }
+          });
+        }
+      });
+
+      if (temp.scheduleArray.length !== 0) {
+        resultArray.push(temp);
+      }
+    });
+
+    await browser.close();
+
+    return res.status(200).send({ timetable: resultArray });
   };
 }
 
