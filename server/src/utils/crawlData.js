@@ -17,7 +17,9 @@ const crawlName = async (content) => {
 const crawlData = async (content) => {
   const newArray = [];
   let storeDivinedNumber = 8;
-  const $ = cheerio.load(content);
+  const $ = await cheerio.load(content);
+  const temp = $(".grid-roll2").text();
+  console.log(temp);
 
   $(".grid-roll2 .body-table tbody tr").each((index, el) => {
     let childArray = { scheduleArray: [] };
@@ -26,7 +28,7 @@ const crawlData = async (content) => {
       .find("td")
       .each((index, el) => {
         const subject = $(el).text();
-
+        console.log(subject);
         if (subject !== "") {
           switch (index) {
             case 0:

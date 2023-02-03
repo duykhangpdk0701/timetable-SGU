@@ -3,16 +3,41 @@ const puppeteer = require("puppeteer");
 const { convertDateToValue } = require("../utils/convertDateToValue");
 const { crawlData, crawlName } = require("../utils/crawlData");
 const returnWeek = require("../utils/returnWeek");
-
+const fs = require("fs");
 class CrawlDataController {
   getData = async (req, res) => {
-    const { id } = req.params;
-    const newArray = await crawlData(id);
-    return res.send({ timetable: newArray });
+    if (!fs.existsSync("screenshots")) {
+      fs.mkdirSync("screenshots");
+    }
+    const { studentID, password } = req.body;
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto(process.env.URL_CRAWL);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtTaiKhoa", studentID);
+
+    await page.type("#ctl00_ContentPlaceHolder1_ctl00_txtMatKhau", password);
+    //
+
+    const submitButtonSelector = "#ctl00_ContentPlaceHolder1_ctl00_btnDangNhap";
+    await page.waitForSelector(submitButtonSelector);
+    await page.click(submitButtonSelector);
+
+    const allResultsSelector = "#ctl00_menu_thoikhoabieu .center a";
+    await page.waitForSelector(allResultsSelector);
+    await page.click(allResultsSelector);
+
+    const content = await page.content();
+    const crawlArray = await crawlData(content);
+    console.log(crawlArray);
+    await page.screenshot({ path: `screenshots/github-profile.jpeg` });
+    return res.send({ timetable: crawlArray });
   };
 
   getName = async (req, res) => {
     const { studentID, password } = req.body;
+
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(process.env.URL_CRAWL);
@@ -105,7 +130,7 @@ class CrawlDataController {
     if (!date) {
       return res.status(400).send({ message: "Vui long nhập ngày tháng năm" });
     }
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(process.env.URL_CRAWL);
 
@@ -123,6 +148,7 @@ class CrawlDataController {
     await page.click(allResultsSelector);
 
     const content = await page.content();
+    console.log(content);
     const crawlArray = await crawlData(content);
     console.log(crawlArray);
     const dateReq = moment(date);
